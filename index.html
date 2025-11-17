@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPhone Catalog Demo | Apple</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons (for the cart) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        /* Custom styles for blurring the backdrop */
+        .backdrop-blur-custom {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        /* Custom height to force initial scroll (2.5 rows * 300px height per item approx) */
+        .h-scroll-force {
+            max-height: 1200px; /* Adjust this value if cards have different height */
+            overflow-y: auto;
+        }
+        /* Style for smooth transitions on elements */
+        .transition-default {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-green': '#10b981', /* Emerald 500 */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <!-- Header and Cart Icon -->
+    <header class="sticky top-0 z-40 bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-3xl font-extrabold text-gray-800">Apple </h1>
+            
+            <!-- Cart Button -->
+            <button id="cart-button" class="relative p-2 rounded-full bg-primary-green text-white hover:bg-emerald-600 transition-default shadow-lg" onclick="toggleCartPanel(true)">
+                <i class="ph ph-shopping-cart-simple text-2xl"></i>
+                <span id="cart-counter" class="absolute top-0 right-0 -mt-1 -mr-1 px-2 py-0.5 text-xs font-bold leading-none text-red-100 transform bg-red-600 rounded-full transition-default scale-0">0</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area: Product Grid -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <h2 class="text-2xl font-bold text-gray-700 mb-6">Pick Your Model</h2>
+
+        <!-- Product Grid Container - Applies forced scroll on larger screens -->
+        <div id="product-grid" class="h-scroll-force grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 pb-12">
+            <!-- Cards will be injected here by JavaScript -->
+        </div>
+    </main>
+
+    <!-- Cart Side Panel and Backdrop -->
+    
+    <!-- Backdrop (Blurred Background) -->
+    <div id="cart-backdrop" class="fixed inset-0 bg-gray-900/50 backdrop-blur-custom z-50 transition-opacity duration-300 opacity-0 pointer-events-none" onclick="toggleCartPanel(false)"></div>
+    
+    <!-- Side Panel -->
+    <div id="cart-panel" class="fixed top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 bg-white shadow-2xl z-50 transform translate-x-full transition-default p-6 flex flex-col">
+        
+        <div class="flex justify-between items-center pb-4 border-b">
+            <h3 class="text-2xl font-bold text-gray-800">Your Cart (<span id="panel-cart-count">0</span>)</h3>
+            <button class="text-gray-500 hover:text-gray-800 p-2 rounded-full" onclick="toggleCartPanel(false)">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Cart Items List -->
+        <div id="cart-items-list" class="flex-grow overflow-y-auto py-4 space-y-4">
+            <!-- Cart items will be displayed here -->
+            <p id="empty-cart-message" class="text-gray-500 text-center mt-8">Your cart is empty.</p>
+        </div>
+
+        <!-- Checkout Button -->
+        <div class="pt-4 border-t">
+            <button class="w-full bg-primary-green text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-default shadow-lg shadow-emerald-500/50" onclick="showReceiveModal()">
+                Receive
+            </button>
+        </div>
+    </div>
+
+    <!-- Final Delivery Confirmation Modal -->
+    <div id="receive-modal" class="fixed inset-0 flex items-center justify-center z-[60] transition-opacity duration-300 opacity-0 pointer-events-none">
+        <!-- Blurred Background for Modal -->
+        <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-custom"></div>
+        
+        <!-- Modal Content -->
+        <div class="bg-white p-10 rounded-2xl shadow-2xl max-w-sm w-full text-center transform scale-90 transition-default">
+            <i class="ph ph-gift text-6xl text-primary-green mx-auto mb-4 animate-bounce"></i>
+            <h4 class="text-3xl font-extrabold text-gray-800 mb-2">Congratulations on your choice!</h4>
+            <p class="text-lg text-gray-600">Delivery coming soon...</p>
+            <button class="mt-6 text-gray-500 hover:text-gray-800 text-sm" onclick="hideReceiveModal()">
+                Close
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Data Mockup and State Management (Updated for 16 unique models) ---
+        
+        // Defining unique models, colors, and storage options
+        const uniqueModels = [
+            // iPhone 17 Series
+            { id: '17pm', name: 'iPhone 17 Pro Max', 
+                colors: [
+                    // Нові кольори: Cosmic Orange, Silver, Deep Blue
+                    { hex: '#FF7F50', label: 'Cosmic Orange', text: 'Cosmic Orange', img_suffix: 'co' }, 
+                    { hex: '#C0C0C0', label: 'Silver', text: 'Silver', img_suffix: 'sv' }, 
+                    { hex: '#00008B', label: 'Deep Blue', text: 'Deep Blue', img_suffix: 'db' }, 
+                ], 
+                defaultColor: '#FF7F50', // 
+                availableStorage: ['256GB', '512GB', '1TB'],
+                defaultStorage: '256GB' 
+            },
+            { id: '17p', name: 'iPhone 17 Pro', 
+                colors: [
+                    // Нові кольори: Cosmic Orange, Silver, Deep Blue
+                    { hex: '#FF7F50', label: 'Cosmic Orange', text: 'Cosmic Orange', img_suffix: 'co' }, 
+                    { hex: '#C0C0C0', label: 'Silver', text: 'Silver', img_suffix: 'sv' }, 
+                    { hex: '#00008B', label: 'Deep Blue', text: 'Deep Blue', img_suffix: 'db' },
+                ], 
+                defaultColor: '#C0C0C0', // Deep Blue
+                availableStorage: ['128GB', '256GB', '512GB', '1TB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '17pl', name: 'iPhone 17 Air', 
+                colors: [
+                    // ОНОВЛЕНО: Нові кольори для iPhone 17 Air
+                    { hex: '#F7F7F7', label: 'Cloud White', text: 'Cloud White', img_suffix: 'cw' }, 
+                    { hex: '#1C1C1E', label: 'Space Black', text: 'Space Black', img_suffix: 'sb' }, 
+                    { hex: '#87CEEB', label: 'Sky Blue', text: 'Sky Blue', img_suffix: 'skyblue' },
+                    { hex: '#F0E68C', label: 'Light Gold', text: 'Light Gold', img_suffix: 'lg' },
+                ], 
+                defaultColor: '#F0E68C', // Cloud White
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '17', name: 'iPhone 17', 
+                colors: [
+                    { hex: '#1C1C1E', label: 'Midnight', text: 'Midnight', img_suffix: 'mid' }, 
+                    { hex: '#F7F0DD', label: 'Starlight', text: 'Starlight', img_suffix: 'st' }, 
+                    { hex: '#1D70B9', label: 'Blue', text: 'Blue', img_suffix: 'bl' },
+                    { hex: '#EE9AE0', label: 'Pink', text: 'Pink', img_suffix: 'pk' },
+                    { hex: '#37A762', label: 'Green', text: 'Green', img_suffix: 'gr' },
+                ], 
+                defaultColor: '#EE9AE0', 
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            },
+            // iPhone 16 Series
+            { id: '16pm', name: 'iPhone 16 Pro Max', 
+                colors: [
+                    { hex: '#E5D3B3', label: 'Desert Titanium', text: 'Desert Titanium', img_suffix: 'dt' }, 
+                    { hex: '#C6C4C1', label: 'Natural Titanium', text: 'Natural Titanium', img_suffix: 'nt' }, 
+                    { hex: '#1E1E1E', label: 'Black Titanium', text: 'Black Titanium', img_suffix: 'btk' },
+                    { hex: '#F3F4F6', label: 'White Titanium', text: 'White Titanium', img_suffix: 'wt' },
+                ], 
+                defaultColor: '#E5D3B3', 
+                availableStorage: ['256GB', '512GB', '1TB'],
+                defaultStorage: '256GB' 
+            },
+            { id: '16p', name: 'iPhone 16 Pro', 
+                colors: [
+                    { hex: '#E5D3B3', label: 'Desert Titanium', text: 'Desert Titanium', img_suffix: 'dt' }, 
+                    { hex: '#C6C4C1', label: 'Natural Titanium', text: 'Natural Titanium', img_suffix: 'nt' }, 
+                    { hex: '#1E1E1E', label: 'Black Titanium', text: 'Black Titanium', img_suffix: 'btk' },
+                    { hex: '#F3F4F6', label: 'White Titanium', text: 'White Titanium', img_suffix: 'wt' },
+                ], 
+                defaultColor: '#F3F4F6', 
+                availableStorage: ['128GB', '256GB', '512GB', '1TB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '16pl', name: 'iPhone 16 Plus', 
+                colors: [
+                    { hex: '#120A8F', label: 'Ultramarine', text: 'Ultramarine', img_suffix: 'um' }, 
+                    { hex: '#008080', label: 'Teal', text: 'Teal', img_suffix: 'tl' }, 
+                    { hex: '#EE9AE0', label: 'Pink', text: 'Pink', img_suffix: 'pk' },
+                    { hex: '#F7F0DD', label: 'White', text: 'White', img_suffix: 'wh' },
+                    { hex: '#1C1C1E', label: 'Black', text: 'Black', img_suffix: 'bk' },
+                ], 
+                defaultColor: '#120A8F', 
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '16', name: 'iPhone 16', 
+                colors: [
+                    { hex: '#120A8F', label: 'Ultramarine', text: 'Ultramarine', img_suffix: 'um' }, 
+                    { hex: '#008080', label: 'Teal', text: 'Teal', img_suffix: 'tl' }, 
+                    { hex: '#EE9AE0', label: 'Pink', text: 'Pink', img_suffix: 'pk' },
+                    { hex: '#F7F0DD', label: 'White', text: 'White', img_suffix: 'wh' },
+                    { hex: '#1C1C1E', label: 'Black', text: 'Black', img_suffix: 'bk' },
+                ], 
+                defaultColor: '#008080', 
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            },
+            // iPhone 15 Series
+            { id: '15pm', name: 'iPhone 15 Pro Max', 
+                colors: [
+                    { hex: '#C6C4C1', label: 'Natural Titanium', text: 'Natural Titanium', img_suffix: 'nt' }, 
+                    { hex: '#384351', label: 'Blue Titanium', text: 'Blue Titanium', img_suffix: 'blt' }, 
+                    { hex: '#F3F4F6', label: 'White Titanium', text: 'White Titanium', img_suffix: 'wt' },
+                    { hex: '#1E1E1E', label: 'Black Titanium', text: 'Black Titanium', img_suffix: 'btk' },
+                ], 
+                defaultColor: '#384351', 
+                availableStorage: ['256GB', '512GB', '1TB'],
+                defaultStorage: '256GB' 
+            },
+            { id: '15p', name: 'iPhone 15 Pro', 
+                colors: [
+                    { hex: '#C6C4C1', label: 'Natural Titanium', text: 'Natural Titanium', img_suffix: 'nt' }, 
+                    { hex: '#384351', label: 'Blue Titanium', text: 'Blue Titanium', img_suffix: 'blt' }, 
+                    { hex: '#F3F4F6', label: 'White Titanium', text: 'White Titanium', img_suffix: 'wt' },
+                    { hex: '#1E1E1E', label: 'Black Titanium', text: 'Black Titanium', img_suffix: 'btk' },
+                ], 
+                defaultColor: '#1E1E1E', 
+                availableStorage: ['128GB', '256GB', '512GB', '1TB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '15pl', name: 'iPhone 15 Plus', 
+                colors: [
+                    { hex: '#1D70B9', label: 'Blue', text: 'Blue', img_suffix: 'bl' }, 
+                    { hex: '#EE9AE0', label: 'Pink', text: 'Pink', img_suffix: 'pk' }, 
+                    { hex: '#FACC15', label: 'Yellow', text: 'Yellow', img_suffix: 'yl' },
+                    { hex: '#37A762', label: 'Green', text: 'Green', img_suffix: 'gr' },
+                    { hex: '#1C1C1E', label: 'Black', text: 'Black', img_suffix: 'bk' },
+                ], 
+                defaultColor: '#FACC15', 
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '15', name: 'iPhone 15', 
+                colors: [
+                    { hex: '#1D70B9', label: 'Blue', text: 'Blue', img_suffix: 'bl' }, 
+                    { hex: '#EE9AE0', label: 'Pink', text: 'Pink', img_suffix: 'pk' }, 
+                    { hex: '#FACC15', label: 'Yellow', text: 'Yellow', img_suffix: 'yl' },
+                    { hex: '#37A762', label: 'Green', text: 'Green', img_suffix: 'gr' },
+                    { hex: '#1C1C1E', label: 'Black', text: 'Black', img_suffix: 'bk' },
+                ], 
+                defaultColor: '#1D70B9', 
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            },
+            // iPhone 14 Series
+            { id: '14pm', name: 'iPhone 14 Pro Max', 
+                colors: [
+                    { hex: '#5E2750', label: 'Deep Purple', text: 'Deep Purple', img_suffix: 'dp' }, 
+                    { hex: '#D4AF37', label: 'Gold', text: 'Gold', img_suffix: 'gd' }, 
+                    { hex: '#A1A1AA', label: 'Silver', text: 'Silver', img_suffix: 'sv' },
+                    { hex: '#0F0F0F', label: 'Space Black', text: 'Space Black', img_suffix: 'sbk' },
+                ], 
+                defaultColor: '#5E2750', 
+                availableStorage: ['128GB', '256GB', '512GB', '1TB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '14p', name: 'iPhone 14 Pro', 
+                colors: [
+                    { hex: '#5E2750', label: 'Deep Purple', text: 'Deep Purple', img_suffix: 'dp' }, 
+                    { hex: '#D4AF37', label: 'Gold', text: 'Gold', img_suffix: 'gd' }, 
+                    { hex: '#A1A1AA', label: 'Silver', text: 'Silver', img_suffix: 'sv' },
+                    { hex: '#0F0F0F', label: 'Space Black', text: 'Space Black', img_suffix: 'sbk' },
+                ], 
+                defaultColor: '#0F0F0F', 
+                availableStorage: ['128GB', '256GB', '512GB', '1TB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '14pl', name: 'iPhone 14 Plus', 
+                colors: [
+                    { hex: '#1D70B9', label: 'Blue', text: 'Blue', img_suffix: 'bl' }, 
+                    { hex: '#8B5CF6', label: 'Purple', text: 'Purple', img_suffix: 'pr' }, 
+                    { hex: '#1C1C1E', label: 'Midnight', text: 'Midnight', img_suffix: 'mid' },
+                    { hex: '#F7F0DD', label: 'Starlight', text: 'Starlight', img_suffix: 'st' },
+                    { hex: '#FACC15', label: 'Yellow', text: 'Yellow', img_suffix: 'yl' },
+                ], 
+                defaultColor: '#8B5CF6', 
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            },
+            { id: '14', name: 'iPhone 14', 
+                colors: [
+                    { hex: '#1D70B9', label: 'Blue', text: 'Blue', img_suffix: 'bl' }, 
+                    { hex: '#8B5CF6', label: 'Purple', text: 'Purple', img_suffix: 'pr' }, 
+                    { hex: '#1C1C1E', label: 'Midnight', text: 'Midnight', img_suffix: 'mid' },
+                    { hex: '#F7F0DD', label: 'Starlight', text: 'Starlight', img_suffix: 'st' },
+                    { hex: '#FACC15', label: 'Yellow', text: 'Yellow', img_suffix: 'yl' },
+                ], 
+                defaultColor: '#1C1C1E', 
+                availableStorage: ['128GB', '256GB', '512GB'],
+                defaultStorage: '128GB' 
+            }
+        ];
+
+        // --- CUSTOM IMAGE MAPPING SECTION (Місце для ваших зображень) ---
+        // Ключ: [id моделі]_[img_suffix кольору]. Замінюйте 'YOUR_IMAGE_URL_HERE' на фактичне посилання.
+        // Якщо зображення відсутнє в цій мапі, буде використано PlaceHolder.
+        const customImageMap = {
+            // --- iPhone 17 Pro Max (17pm) ---
+              '17pm_co': 'https://yabloki.ua/media/cache/sylius_shop_product_original/26/40/iphone-17-pro-max-256-gb-orange-now-1.png.webp', // Cosmic Orange
+              '17pm_sv': 'https://yabloki.ua/media/cache/sylius_shop_product_original/21/9b/iphone-17-pro-max-256-gb-white-now-1.png.webp', // Silver
+              '17pm_db': 'https://yabloki.ua/media/cache/sylius_shop_product_original/e2/4c/iphone-17-pro-max-256-gb-navy-now-1.png.webp', // Deep Blue
+
+            // --- iPhone 17 Pro (17p) ---
+              '17p_co': 'https://yabloki.ua/media/cache/sylius_shop_product_original/26/40/iphone-17-pro-max-256-gb-orange-now-1.png.webp', // Cosmic Orange
+              '17p_sv': 'https://yabloki.ua/media/cache/sylius_shop_product_original/21/9b/iphone-17-pro-max-256-gb-white-now-1.png.webp', // Silver
+              '17p_db': 'https://yabloki.ua/media/cache/sylius_shop_product_original/e2/4c/iphone-17-pro-max-256-gb-navy-now-1.png.webp', // Deep Blue
+
+            // --- iPhone 17 Air (17pl) ---
+             '17pl_cw': 'https://yabloki.ua/media/cache/sylius_shop_product_original/fe/6c/iphone-17-air-256-gb-white-silver-now-3.png.webp', // Cloud White (НОВИЙ)
+             '17pl_sb': 'https://yabloki.ua/media/cache/sylius_shop_product_original/67/19/iphone-17-air-256-gb-black-now-3.png.webp', // Space Black (НОВИЙ)
+             '17pl_skyblue': 'https://yabloki.ua/media/cache/sylius_shop_product_original/fd/75/iphone-17-air-256-gb-sky-blue-now-3.png.webp', // Sky Blue (НОВИЙ)
+             '17pl_lg': 'https://yabloki.ua/media/cache/sylius_shop_product_original/ab/3e/iphone-17-air-256-gb-dark-titanium-now-3.png.webp', // Light Gold (НОВИЙ)
+
+            // --- iPhone 17 (17) ---
+            // '17_mid': 'YOUR_IMAGE_URL_HERE', // Midnight
+            // '17_st': 'YOUR_IMAGE_URL_HERE', // Starlight
+            // '17_bl': 'YOUR_IMAGE_URL_HERE', // Blue
+             '17_pk': 'https://yabloki.ua/media/cache/sylius_shop_product_original/4b/7d/iphone-17-256-gb-purple-now-3.png.webp', // Pink
+            // '17_gr': 'YOUR_IMAGE_URL_HERE', // Green
+
+            // --- iPhone 16 Pro Max (16pm) ---
+             '16pm_dt': 'https://yabloki.ua/media/cache/sylius_shop_product_original/f7/50/iphone-16-pro-max-256gb-desert-titanium-e-sim_f35ec104-d4b8-4ba0-a577-8be8cc2b0495-5.png.webp', // Desert Titanium
+            // '16pm_nt': 'YOUR_IMAGE_URL_HERE', // Natural Titanium
+            // '16pm_btk': 'YOUR_IMAGE_URL_HERE', // Black Titanium
+            // '16pm_wt': 'YOUR_IMAGE_URL_HERE', // White Titanium
+
+            // --- iPhone 16 Pro (16p) ---
+            // '16p_dt': 'YOUR_IMAGE_URL_HERE', // Desert Titanium
+            // '16p_nt': 'YOUR_IMAGE_URL_HERE', // Natural Titanium
+            // '16p_btk': 'YOUR_IMAGE_URL_HERE', // Black Titanium
+            '16p_wt': 'https://yabloki.ua/media/cache/sylius_shop_product_original/fa/f1/iphone-16-pro-max-256-gb-white-titanium-5.png.webp', // White Titanium
+
+            // --- iPhone 16 Plus (16pl) ---
+             '16pl_um': 'https://yabloki.ua/media/cache/sylius_shop_product_original/43/be/iphone-16-plus-128-gb-blue-5.png.webp', // Ultramarine
+             '16pl_tl': 'https://yabloki.ua/media/cache/sylius_shop_product_original/ff/51/iphone-16-plus-128-gb-green-5.png.webp', // Teal
+             '16pl_pk': 'https://yabloki.ua/media/cache/sylius_shop_product_original/e7/98/iphone-16-plus-128-gb-pink-5.png.webp', // Pink
+             '16pl_wh': 'https://yabloki.ua/media/cache/sylius_shop_product_original/0b/a5/iphone-16-plus-128-gb-starlight-5.png.webp', // White
+             '16pl_bk': 'https://yabloki.ua/media/cache/sylius_shop_product_original/bb/48/iphone-16-plus-128-gb-black-5.png.webp', // Black
+
+            // --- iPhone 16 (16) ---
+            // '16_um': 'YOUR_IMAGE_URL_HERE', // Ultramarine
+             '16_tl': 'https://yabloki.ua/media/cache/sylius_shop_product_original/38/f1/iphone-16-128-gb-green-5.png.webp', // Teal
+            // '16_pk': 'YOUR_IMAGE_URL_HERE', // Pink
+            // '16_wh': 'YOUR_IMAGE_URL_HERE', // White
+            // '16_bk': 'YOUR_IMAGE_URL_HERE', // Black
+
+            // --- iPhone 15 Pro Max (15pm) ---
+             '15pm_nt': 'https://yabloki.ua/media/cache/sylius_shop_product_original/5d/96/iphone-15-pro-max-deep-purple-512-mb-1.png.webp', // Natural Titanium
+             '15pm_blt': 'https://yabloki.ua/media/cache/sylius_shop_product_original/98/69/iphone-15-pro-max-gold-256-gb-1.png.webp', // Blue Titanium
+             '15pm_wt': 'https://yabloki.ua/media/cache/sylius_shop_product_original/32/e1/iphone-15-pro-max-silver-256-gb-1.png.webp', // White Titanium
+             '15pm_btk': 'https://yabloki.ua/media/cache/sylius_shop_product_original/e6/91/iphone-15-pro-max-256gb-black-titanium-dual-sim-1.png.webp', // Black Titanium
+
+            // --- iPhone 15 Pro (15p) ---
+            // '15p_nt': 'YOUR_IMAGE_URL_HERE', // Natural Titanium
+            // '15p_blt': 'YOUR_IMAGE_URL_HERE', // Blue Titanium
+            // '15p_wt': 'YOUR_IMAGE_URL_HERE', // White Titanium
+             '15p_btk': 'https://yabloki.ua/media/cache/sylius_shop_product_original/e6/91/iphone-15-pro-max-256gb-black-titanium-dual-sim-1.png.webp', // Black Titanium
+
+            // --- iPhone 15 Plus (15pl) ---
+            // '15pl_bl': 'YOUR_IMAGE_URL_HERE', // Blue
+            // '15pl_pk': 'YOUR_IMAGE_URL_HERE', // Pink
+             '15pl_yl': 'https://yabloki.ua/media/cache/sylius_shop_product_original/68/8d/iphone-15-plus-256gb-yellow-e-sim_3f2378d0-5a12-4de0-b9e8-95805cd9e694-1.png.webp', // Yellow
+            // '15pl_gr': 'YOUR_IMAGE_URL_HERE', // Green
+            // '15pl_bk': 'YOUR_IMAGE_URL_HERE', // Black
+
+            // --- iPhone 15 (15) ---
+             '15_bl': 'https://yabloki.ua/media/cache/sylius_shop_product_original/12/5b/iphone-15-blue-128-mb-1.png.webp', // Blue
+            // '15_pk': 'YOUR_IMAGE_URL_HERE', // Pink
+            // '15_yl': 'YOUR_IMAGE_URL_HERE', // Yellow
+            // '15_gr': 'YOUR_IMAGE_URL_HERE', // Green
+            // '15_bk': 'YOUR_IMAGE_URL_HERE', // Black
+
+            // --- iPhone 14 Pro Max (14pm) ---
+             '14pm_dp': 'https://yabloki.ua/media/cache/sylius_shop_product_original/37/a4/iphone-14-pro-max-deep-purple-512gb-1.png.webp', // Deep Purple
+            // '14pm_gd': 'YOUR_IMAGE_URL_HERE', // Gold
+            // '14pm_sv': 'YOUR_IMAGE_URL_HERE', // Silver
+            // '14pm_sbk': 'YOUR_IMAGE_URL_HERE', // Space Black
+
+            // --- iPhone 14 Pro (14p) ---
+            // '14p_dp': 'YOUR_IMAGE_URL_HERE', // Deep Purple
+            // '14p_gd': 'YOUR_IMAGE_URL_HERE', // Gold
+            // '14p_sv': 'YOUR_IMAGE_URL_HERE', // Silver
+             '14p_sbk': 'https://yabloki.ua/media/cache/sylius_shop_product_original/bc/20/iphone-14-pro-space-black-512gb-1.png.webp', // Space Black
+
+            // --- iPhone 14 Plus (14pl) ---
+            // '14pl_bl': 'YOUR_IMAGE_URL_HERE', // Blue
+             '14pl_pr': 'https://yabloki.ua/media/cache/sylius_shop_product_original/d4/01/iphone-14-plus-purple-128gb-1.png.webp', // Purple
+            // '14pl_mid': 'YOUR_IMAGE_URL_HERE', // Midnight
+            // '14pl_st': 'YOUR_IMAGE_URL_HERE', // Starlight
+            // '14pl_yl': 'YOUR_IMAGE_URL_HERE', // Yellow
+
+            // --- iPhone 14 (14) ---
+            // '14_bl': 'YOUR_IMAGE_URL_HERE', // Blue
+            // '14_pr': 'YOUR_IMAGE_URL_HERE', // Purple
+             '14_mid': 'https://yabloki.ua/media/cache/sylius_shop_product_original/1c/e8/iphone-14-midnight-128gb-1.png.webp', // Midnight
+            // '14_st': 'YOUR_IMAGE_URL_HERE', // Starlight
+            // '14_yl': 'YOUR_IMAGE_URL_HERE', // Yellow
+        };
+        // ------------------------------------------------------------------
+
+
+        // Generate productsData array based on 16 unique models
+        const productsData = uniqueModels.map((model, index) => ({
+            id: index + 1,
+            modelName: model.name,
+            availableColors: model.colors,
+            selectedColor: model.defaultColor,
+            selectedStorage: model.defaultStorage,
+            availableStorage: model.availableStorage,
+            // ОНОВЛЕНО: Функція, яка перевіряє customImageMap
+            imageURL: (color) => {
+                const key = `${model.id}_${color.img_suffix}`;
+                // 1. Перевіряємо, чи є власне зображення
+                if (customImageMap[key]) {
+                    return customImageMap[key];
+                }
+                // 2. Якщо немає, повертаємо Placeholder
+                return `https://placehold.co/400x400/1C1C1E/F7F0DD?text=${model.name.replace(/ /g, '+')}+%5B${color.text.replace(/ /g, '+')}%5D`;
+            },
+        }));
+
+
+        // Global State: Declare DOM element variables globally with 'let'
+        let cartItems = [];
+        let cartCounter, cartItemsList, emptyCartMessage, cartPanel, cartBackdrop, receiveModal, panelCartCount;
+
+        // --- Core Functions ---
+
+        /**
+         * Renders the main product grid.
+         */
+        function renderProducts() {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = productsData.map((product, index) => {
+                const currentProduct = productsData[index];
+                const defaultColorObj = currentProduct.availableColors.find(c => c.hex === currentProduct.selectedColor);
+                // Тут використовується оновлена функція imageURL
+                const initialImage = currentProduct.imageURL(defaultColorObj); 
+
+                return `
+                    <div id="card-${product.id}" class="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-default overflow-hidden flex flex-col p-4 border border-gray-100">
+                        <!-- Image Area -->
+                        <div class="flex-shrink-0 h-48 flex items-center justify-center bg-gray-50 rounded-lg mb-3 overflow-hidden">
+                            <img id="image-${product.id}" src="${initialImage}" alt="${product.modelName} ${defaultColorObj.label}" class="w-full h-full object-contain transition-transform duration-500 ease-in-out hover:scale-105" onerror="this.src='https://placehold.co/400x400/ccc/333?text=No+Image'">
+                        </div>
+
+                        <!-- Title and Info -->
+                        <div class="flex-grow">
+                            <h3 class="text-xl font-bold text-gray-900 mb-1">${product.modelName}</h3>
+                        </div>
+                        
+                        <!-- Memory Dropdown -->
+                        <div class="relative inline-block text-left mb-3">
+                            <button id="storage-btn-${product.id}" type="button" class="inline-flex justify-center w-full rounded-full border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-default" onclick="toggleStorageDropdown(${product.id})">
+                                ${product.selectedStorage}
+                                <i class="ph ph-caret-down ml-2 -mr-1 text-sm"></i>
+                            </button>
+                            <div id="storage-menu-${product.id}" class="origin-top-right absolute right-0 mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 hidden">
+                                <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                    ${product.availableStorage.map(storage => `
+                                        <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-default" role="menuitem" onclick="selectStorage(${product.id}, '${storage}')">
+                                            ${storage}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Color Selector -->
+                        <div class="flex space-x-2 mb-4">
+                            ${product.availableColors.map(color => `
+                                <button
+                                    class="w-6 h-6 rounded-full border-2 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-default"
+                                    style="background-color: ${color.hex}; border-color: ${color.hex}; ${color.hex === product.selectedColor ? 'border-color: #374151; box-shadow: 0 0 0 2px #374151;' : 'border-color: #f3f4f6;'}"
+                                    title="${color.label}"
+                                    onclick="selectColor(${product.id}, '${color.hex}')"
+                                    data-hex="${color.hex}"
+                                    data-label="${color.label}"
+                                    data-img-suffix="${color.img_suffix}"
+                                ></button>
+                            `).join('')}
+                        </div>
+
+                        <!-- Select Button -->
+                        <button class="bg-primary-green text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-default shadow-md shadow-emerald-500/50" onclick="addToCart(${product.id})">
+                            Select
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * Toggles the memory storage dropdown for a given product card.
+         * @param {number} productId 
+         */
+        function toggleStorageDropdown(productId) {
+            const menu = document.getElementById(`storage-menu-${productId}`);
+            menu.classList.toggle('hidden');
+        }
+
+        /**
+         * Selects a storage option and closes the dropdown.
+         * @param {number} productId 
+         * @param {string} storage 
+         */
+        function selectStorage(productId, storage) {
+            const product = productsData.find(p => p.id === productId);
+            if (product) {
+                product.selectedStorage = storage;
+                document.getElementById(`storage-btn-${productId}`).innerHTML = `${storage} <i class="ph ph-caret-down ml-2 -mr-1 text-sm"></i>`;
+                toggleStorageDropdown(productId); // Close dropdown
+            }
+        }
+
+        /**
+         * Handles color selection and updates the card image and UI.
+         * @param {number} productId 
+         * @param {string} colorHex 
+         */
+        function selectColor(productId, colorHex) {
+            const product = productsData.find(p => p.id === productId);
+            if (product && product.selectedColor !== colorHex) {
+                const newColor = product.availableColors.find(c => c.hex === colorHex);
+                
+                // 1. Update internal state
+                product.selectedColor = colorHex;
+
+                // 2. Update Image (smooth transition)
+                const imageEl = document.getElementById(`image-${productId}`);
+                imageEl.classList.remove('opacity-100');
+                imageEl.classList.add('opacity-0');
+
+                // Wait for fade-out, change src, then fade-in
+                setTimeout(() => {
+                    // Використовуємо оновлену функцію imageURL для отримання коректного посилання
+                    imageEl.src = product.imageURL(newColor);
+                    imageEl.alt = `${product.modelName} ${newColor.label}`;
+                    imageEl.classList.remove('opacity-0');
+                    imageEl.classList.add('opacity-100');
+                }, 150);
+                
+                // 3. Update Color Selector UI (border/ring)
+                const cardEl = document.getElementById(`card-${productId}`);
+                const colorButtons = cardEl.querySelectorAll('[data-hex]');
+                colorButtons.forEach(btn => {
+                    btn.style.boxShadow = 'none';
+                    if (btn.dataset.hex === colorHex) {
+                        btn.style.boxShadow = '0 0 0 2px #374151'; // Dark ring effect
+                    }
+                });
+            }
+        }
+
+        /**
+         * Adds the currently configured product to the cart.
+         * @param {number} productId 
+         */
+        function addToCart(productId) {
+            const product = productsData.find(p => p.id === productId);
+            if (product) {
+                const selectedColorObj = product.availableColors.find(c => c.hex === product.selectedColor);
+                
+                const cartItem = {
+                    id: Date.now(), // Unique ID for cart item
+                    model: product.modelName,
+                    storage: product.selectedStorage,
+                    color: selectedColorObj.label,
+                    colorHex: selectedColorObj.hex,
+                    imageURL: product.imageURL(selectedColorObj), // Image URL is saved here
+                };
+                
+                cartItems.push(cartItem);
+                updateCartUI();
+
+                // Optional: show a quick success message on the button
+                const button = document.querySelector(`#card-${productId} button:last-child`);
+                const originalText = button.innerHTML;
+                button.innerHTML = 'Added! <i class="ph ph-check-circle text-lg ml-1"></i>';
+                button.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                button.classList.remove('bg-primary-green', 'hover:bg-emerald-600');
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    button.classList.add('bg-primary-green', 'hover:bg-emerald-600');
+                }, 1500);
+            }
+        }
+
+        /**
+         * Removes an item from the cart.
+         * @param {number} itemId 
+         */
+        function removeItemFromCart(itemId) {
+            cartItems = cartItems.filter(item => item.id !== itemId);
+            updateCartUI();
+        }
+
+
+        /**
+         * Updates the cart counter and panel content.
+         */
+        function updateCartUI() {
+            const count = cartItems.length;
+            cartCounter.textContent = count;
+            panelCartCount.textContent = count;
+
+            // Animate counter visibility
+            if (count > 0) {
+                cartCounter.classList.remove('scale-0');
+            } else {
+                cartCounter.classList.add('scale-0');
+            }
+
+            // Render cart items in the panel
+            if (count === 0) {
+                cartItemsList.innerHTML = '';
+                emptyCartMessage.classList.remove('hidden');
+            } else {
+                emptyCartMessage.classList.add('hidden');
+                cartItemsList.innerHTML = cartItems.map(item => `
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg shadow-sm">
+                        <!-- Item Image Preview: NOW USES PHOTO -->
+                        <div class="w-14 h-14 rounded-lg flex-shrink-0 bg-white overflow-hidden border border-gray-200 flex items-center justify-center">
+                            <img src="${item.imageURL}" alt="${item.model} ${item.color}" class="w-full h-full object-contain p-1" onerror="this.src='https://placehold.co/56x56/ccc/333?text=Img'">
+                        </div>
+                        
+                        <!-- Item Details -->
+                        <div class="flex-grow">
+                            <p class="text-gray-900 font-semibold">${item.model}</p>
+                            <p class="text-sm text-gray-600">${item.storage} | Color: ${item.color}</p>
+                        </div>
+                        
+                        <!-- Remove Button -->
+                        <button class="text-red-500 hover:text-red-700 p-1 rounded-full" onclick="removeItemFromCart(${item.id})" title="Remove">
+                            <i class="ph ph-trash text-lg"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        /**
+         * Toggles the visibility of the Cart Side Panel and its backdrop.
+         * @param {boolean} show If true, shows the panel, otherwise hides it.
+         */
+        function toggleCartPanel(show) {
+            if (show) {
+                cartPanel.classList.remove('translate-x-full');
+                cartBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+                cartBackdrop.classList.add('opacity-100');
+            } else {
+                cartPanel.classList.add('translate-x-full');
+                cartBackdrop.classList.remove('opacity-100');
+                cartBackdrop.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        /**
+         * Shows the final "Delivery coming soon..." animation modal.
+         */
+        function showReceiveModal() {
+            // 1. Close the cart panel
+            toggleCartPanel(false);
+
+            // 2. Show the receive modal with animation
+            receiveModal.classList.remove('opacity-0', 'pointer-events-none');
+            receiveModal.querySelector('.bg-white').classList.remove('scale-90');
+        }
+
+        /**
+         * Hides the final "Delivery coming soon..." animation modal.
+         */
+        function hideReceiveModal() {
+            receiveModal.querySelector('.bg-white').classList.add('scale-90');
+            setTimeout(() => {
+                receiveModal.classList.add('opacity-0', 'pointer-events-none');
+            }, 300);
+            
+            // Clear the cart after "receiving" the order
+            cartItems = [];
+            updateCartUI();
+        }
+
+
+        // --- Initialization ---
+        window.onload = () => {
+            // Initialize DOM element variables when the document is fully loaded to avoid 'null' errors.
+            cartCounter = document.getElementById('cart-counter');
+            cartItemsList = document.getElementById('cart-items-list');
+            emptyCartMessage = document.getElementById('empty-cart-message');
+            cartPanel = document.getElementById('cart-panel');
+            cartBackdrop = document.getElementById('cart-backdrop');
+            receiveModal = document.getElementById('receive-modal');
+            panelCartCount = document.getElementById('panel-cart-count');
+            
+            renderProducts();
+            updateCartUI(); // Initialize counter
+        };
+
+    </script>
+</body>
+</html>
